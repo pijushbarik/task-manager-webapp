@@ -2,13 +2,20 @@ import classNames from "classnames";
 import React, { useState, useEffect, useCallback } from "react";
 import { DragDropContext, Droppable, DropResult } from "react-beautiful-dnd";
 import DraggableTaskCard from "./DraggableTaskCard";
-import { TaskGroup, Task, Subtask, TaskViewProps, TaskResponse } from "./types";
+import {
+  TaskGroup,
+  Task,
+  Subtask,
+  TaskViewProps,
+  TaskResponse,
+  TaskStatus,
+} from "./types";
 import { move, reorder } from "./helpers";
 import axios from "../../lib/axios";
 import cogo from "cogo-toast";
 import NewTask from "./NewTask";
 
-const TaskView: React.FC<TaskViewProps> = () => {
+const TaskView: React.FC<TaskViewProps> = props => {
   const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([
     { type: "todo", tasks: [] },
     { type: "in_progress", tasks: [] },
@@ -228,43 +235,66 @@ const TaskView: React.FC<TaskViewProps> = () => {
     []
   );
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="grid grid-cols-3 gap-6">
-        {taskGroups.map(taskGroup => (
-          <div
-            className={classNames(
-              "p-4 rounded-md rounded-b-none text-white font-semibold capitalize flex justify-between items-center",
-              taskGroup.type === "todo" && "bg-gray-600",
-              taskGroup.type === "in_progress" && "bg-blue-600",
-              taskGroup.type === "completed" && "bg-green-600"
-            )}
-            key={taskGroup.type}
-          >
-            <span>{taskGroup.type.split("_").join(" ")}</span>
-            {taskGroup.type === "todo" ? (
-              <NewTask onAdd={handleAddTask} placeholder="Enter task title" />
-            ) : null}
-          </div>
-        ))}
+  const getGroupHeader = (type: TaskStatus) => {
+    return (
+      <div
+        className={classNames(
+          "p-4 rounded-md rounded-b-none text-white font-semibold capitalize flex justify-between items-center",
+          type === "todo" && "bg-gray-600",
+          type === "in_progress" && "bg-blue-600",
+          type === "completed" && "bg-green-600"
+        )}
+        key={type}
+      >
+        <span>{type.split("_").join(" ")}</span>
+        {type === "todo" ? (
+          <NewTask onAdd={handleAddTask} placeholder="Enter task title" />
+        ) : null}
       </div>
+    );
+  };
+
+  return (
+    <div
+      className={classNames(
+        "flex flex-col h-full",
+        props.mode === "list" && "overflow-y-scroll"
+      )}
+    >
+      {props.mode !== "list" && (
+        <div className="grid grid-cols-3 gap-6">
+          {taskGroups.map(taskGroup => getGroupHeader(taskGroup.type))}
+        </div>
+      )}
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div
-          className="grid grid-cols-3 gap-6"
-          style={{ height: "calc(100% - 56px)" }}
+          className={classNames(
+            props.mode === "list" ? "" : "grid grid-cols-3 gap-6"
+          )}
+          style={{
+            height: props.mode === "list" ? "auto" : "calc(100% - 56px)",
+          }}
         >
           {taskGroups.map((taskGroup, taskGroupIndex) => (
             <div
-              className="h-full overflow-y-auto p-2 bg-gray-100 rounded-md rounded-t-none"
+              className={classNames(
+                "p-2 bg-gray-100 rounded-md rounded-t-none",
+                props.mode === "list"
+                  ? "overflow-y-visible"
+                  : "overflow-y-hidden h-full"
+              )}
               key={taskGroup.type}
             >
+              {props.mode === "list" && getGroupHeader(taskGroup.type)}
               <Droppable key={taskGroupIndex} droppableId={`${taskGroupIndex}`}>
                 {provided => (
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className="h-full overflow-y-scroll pr-2"
+                    className={classNames(
+                      props.mode === "list" ? "" : "h-full overflow-y-scroll"
+                    )}
                   >
                     {taskGroup.tasks.length ? (
                       taskGroup.tasks.map((task, taskIndex) => (

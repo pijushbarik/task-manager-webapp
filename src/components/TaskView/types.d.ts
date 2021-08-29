@@ -16,7 +16,9 @@ export interface TaskGroup {
   tasks: Task[];
 }
 
-export interface TaskViewProps {}
+export interface TaskViewProps {
+  mode?: "list" | "board";
+}
 
 export interface TaskResponse extends Subtask {
   subtasks: Subtask[];
