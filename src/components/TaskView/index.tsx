@@ -235,6 +235,50 @@ const TaskView: React.FC<TaskViewProps> = props => {
     []
   );
 
+  const handleDeleteTask = useCallback(
+    async (id: string, groupIndex: number, taskIndex: number) => {
+      try {
+        await axios.delete(`/tasks/${id}`);
+
+        setTaskGroups(prev => {
+          const arr = [...prev];
+          arr[groupIndex].tasks.splice(taskIndex, 1);
+
+          return arr;
+        });
+      } catch (e) {
+        console.error(e);
+        cogo.error("Failed to add task");
+      }
+    },
+    []
+  );
+
+  const handleDeleteSubtask = useCallback(
+    async (
+      id: string,
+      taskId: string,
+      groupIndex: number,
+      taskIndex: number,
+      subtaskIndex: number
+    ) => {
+      try {
+        await axios.delete(`/tasks/${taskId}/s/${id}`);
+
+        setTaskGroups(prev => {
+          const arr = [...prev];
+          arr[groupIndex].tasks[taskIndex].subtasks.splice(subtaskIndex, 1);
+
+          return arr;
+        });
+      } catch (e) {
+        console.error(e);
+        cogo.error("Failed to add subtask");
+      }
+    },
+    []
+  );
+
   const getGroupHeader = (type: TaskStatus) => {
     return (
       <div
@@ -316,23 +360,19 @@ const TaskView: React.FC<TaskViewProps> = props => {
                               return arr;
                             });
                           }}
-                          onClickDeleteButton={() => {
-                            setTaskGroups(prev => {
-                              const arr = [...prev];
-                              arr[taskGroupIndex].tasks.splice(taskIndex, 1);
-                              return arr;
-                            });
-                          }}
+                          onClickDeleteButton={() =>
+                            handleDeleteTask(task.id, taskGroupIndex, taskIndex)
+                          }
                           onDragEndSubtask={onDragEndSubtask}
-                          onClickDeleteSubtask={subtaskIndex => {
-                            setTaskGroups(prev => {
-                              const arr = [...prev];
-                              arr[taskGroupIndex].tasks[
-                                taskIndex
-                              ].subtasks.splice(subtaskIndex, 1);
-                              return arr;
-                            });
-                          }}
+                          onClickDeleteSubtask={(subtaskId, subtaskIndex) =>
+                            handleDeleteSubtask(
+                              subtaskId,
+                              task.id,
+                              taskGroupIndex,
+                              taskIndex,
+                              subtaskIndex
+                            )
+                          }
                           onAddSubtask={handleAddSubtask}
                           onEditTask={handleEditTask}
                           onEditSubtask={handleEditSubtask}

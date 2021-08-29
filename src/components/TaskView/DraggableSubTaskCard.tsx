@@ -8,7 +8,7 @@ interface DraggableSubaskCardProps {
   id: string;
   title: string;
   index: number;
-  onClickDeleteButton: (subtaskIndex: number) => void;
+  onClickDeleteButton: (subtaskId: string, subtaskIndex: number) => void;
   onEditSubtask: (
     subtaskUpdateData: { id: string; title: string },
     subtaskIndex: number
@@ -83,7 +83,7 @@ const DraggableSubtaskCard: React.FC<DraggableSubaskCardProps> = props => {
               icon={faTrash}
               title="Delete subtask"
               size="small"
-              onClick={() => props.onClickDeleteButton(props.index)}
+              onClick={() => props.onClickDeleteButton(props.id, props.index)}
             />
           </div>
         </div>

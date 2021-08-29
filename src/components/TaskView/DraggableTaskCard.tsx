@@ -23,7 +23,7 @@ interface DraggableTaskCardProps {
   onDragEndSubtask: (result: DropResult, taskGroupIndex: number) => void;
   onClickListButton: () => void;
   onClickDeleteButton: () => void;
-  onClickDeleteSubtask: (subtaskIndex: number) => void;
+  onClickDeleteSubtask: (subtaskId: string, subtaskIndex: number) => void;
   onAddSubtask: (
     title: string,
     taskId: string,
