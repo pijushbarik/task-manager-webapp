@@ -11,10 +11,10 @@ import {
   TaskStatus,
 } from "./types";
 import { move, reorder } from "./helpers";
-import axios from "../../lib/axios";
 import cogo from "cogo-toast";
 import NewTask from "./NewTask";
 import pick from "../../lib/utils/pick";
+import useSocket from "../../lib/hooks/useSocket";
 
 const TaskView: React.FC<TaskViewProps> = props => {
   const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([
@@ -23,39 +23,40 @@ const TaskView: React.FC<TaskViewProps> = props => {
     { type: "completed", tasks: [] },
   ]);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await axios.get<TaskResponse[]>("/tasks");
-
-      const tasksTodo = [];
-      const tasksInProgress = [];
-      const tasksCompleted = [];
-
-      const tasks: Task[] = res.data.map(t => ({
-        ...t,
-        showSubtasks: false,
-      }));
-
-      for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].status === "todo") tasksTodo.push(tasks[i]);
-        if (tasks[i].status === "in_progress") tasksInProgress.push(tasks[i]);
-        if (tasks[i].status === "completed") tasksCompleted.push(tasks[i]);
-      }
-
-      setTaskGroups([
-        { type: "todo", tasks: tasksTodo },
-        { type: "in_progress", tasks: tasksInProgress },
-        { type: "completed", tasks: tasksCompleted },
-      ]);
-    } catch (e) {
-      console.error(e);
-      cogo.error("Something went wrong");
-    }
-  }, []);
+  const socket = useSocket();
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (socket) {
+      socket.on("newData", handleNewData);
+    }
+
+    return () => {
+      socket.off("newData", handleNewData);
+    };
+  }, [socket]);
+
+  const handleNewData = (data: TaskResponse[]) => {
+    const tasksTodo = [];
+    const tasksInProgress = [];
+    const tasksCompleted = [];
+
+    const tasks: Task[] = data.map(t => ({
+      ...t,
+      showSubtasks: false,
+    }));
+
+    for (let i = 0; i < tasks.length; i++) {
+      if (tasks[i].status === "todo") tasksTodo.push(tasks[i]);
+      if (tasks[i].status === "in_progress") tasksInProgress.push(tasks[i]);
+      if (tasks[i].status === "completed") tasksCompleted.push(tasks[i]);
+    }
+
+    setTaskGroups([
+      { type: "todo", tasks: tasksTodo },
+      { type: "in_progress", tasks: tasksInProgress },
+      { type: "completed", tasks: tasksCompleted },
+    ]);
+  };
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination } = result;
@@ -141,112 +142,82 @@ const TaskView: React.FC<TaskViewProps> = props => {
     }
   };
 
-  const handleAddTask = useCallback(async (title: string) => {
-    try {
-      const res = await axios.post<Task>("/tasks", { title });
-
-      setTaskGroups(prev => {
-        const arr = [...prev];
-        arr[0].tasks.push(res.data);
-
-        return arr;
-      });
-    } catch (e) {
-      console.error(e);
-      cogo.error("Failed to add task");
-    }
-  }, []);
-
-  const handleAddSubtask = useCallback(
-    async (
-      title: string,
-      taskId: string,
-      groupIndex: number,
-      taskIndex: number
-    ) => {
+  const handleAddTask = useCallback(
+    async (title: string) => {
       try {
-        const res = await axios.post<Subtask>(`/tasks/${taskId}/s`, { title });
-
-        setTaskGroups(prev => {
-          const arr = [...prev];
-          arr[groupIndex].tasks[taskIndex].subtasks.push(res.data);
-
-          return arr;
-        });
-      } catch (e) {
-        console.error(e);
-        cogo.error("Failed to add subtask");
-      }
-    },
-    []
-  );
-
-  const handleEditTask = useCallback(async (taskUpdateData: any) => {
-    try {
-      const updateData = pick(taskUpdateData, ["title", "status", "order"]);
-      await axios.put<Task>(`/tasks/${taskUpdateData.id}`, updateData);
-    } catch (e) {
-      console.error(e);
-      cogo.error("Failed to update task");
-    }
-  }, []);
-
-  const handleEditSubtask = useCallback(async (subtaskUpdateData: any) => {
-    try {
-      const updateData = pick(subtaskUpdateData, ["title", "order"]);
-
-      await axios.put<Subtask>(
-        `/tasks/${subtaskUpdateData.taskId}/s/${subtaskUpdateData.id}`,
-        updateData
-      );
-    } catch (e) {
-      console.error(e);
-      cogo.error("Failed to update task");
-    }
-  }, []);
-
-  const handleDeleteTask = useCallback(
-    async (id: string, groupIndex: number, taskIndex: number) => {
-      try {
-        await axios.delete(`/tasks/${id}`);
-
-        setTaskGroups(prev => {
-          const arr = [...prev];
-          arr[groupIndex].tasks.splice(taskIndex, 1);
-
-          return arr;
-        });
+        socket.emit("createTask", { title });
       } catch (e) {
         console.error(e);
         cogo.error("Failed to add task");
       }
     },
-    []
+    [socket]
   );
 
-  const handleDeleteSubtask = useCallback(
-    async (
-      id: string,
-      taskId: string,
-      groupIndex: number,
-      taskIndex: number,
-      subtaskIndex: number
-    ) => {
+  const handleAddSubtask = useCallback(
+    async (title: string, taskId: string) => {
       try {
-        await axios.delete(`/tasks/${taskId}/s/${id}`);
-
-        setTaskGroups(prev => {
-          const arr = [...prev];
-          arr[groupIndex].tasks[taskIndex].subtasks.splice(subtaskIndex, 1);
-
-          return arr;
-        });
+        socket.emit("createSubtask", { taskId, body: { title } });
       } catch (e) {
         console.error(e);
         cogo.error("Failed to add subtask");
       }
     },
-    []
+    [socket]
+  );
+
+  const handleEditTask = useCallback(
+    async (taskUpdateData: any) => {
+      try {
+        const updateBody = pick(taskUpdateData, ["title", "status", "order"]);
+        socket.emit("updateTask", { id: taskUpdateData.id, updateBody });
+      } catch (e) {
+        console.error(e);
+        cogo.error("Failed to update task");
+      }
+    },
+    [socket]
+  );
+
+  const handleEditSubtask = useCallback(
+    async (subtaskUpdateData: any) => {
+      try {
+        const updateBody = pick(subtaskUpdateData, ["title", "order"]);
+        socket.emit("updateSubtask", {
+          taskId: subtaskUpdateData.taskId,
+          subtaskId: subtaskUpdateData.id,
+          updateBody,
+        });
+      } catch (e) {
+        console.error(e);
+        cogo.error("Failed to update task");
+      }
+    },
+    [socket]
+  );
+
+  const handleDeleteTask = useCallback(
+    async (id: string) => {
+      try {
+        socket.emit("deleteTask", { id });
+      } catch (e) {
+        console.error(e);
+        cogo.error("Failed to add task");
+      }
+    },
+    [socket]
+  );
+
+  const handleDeleteSubtask = useCallback(
+    async (id: string, taskId: string) => {
+      try {
+        socket.emit("deleteSubtask", { taskId, subtaskId: id });
+      } catch (e) {
+        console.error(e);
+        cogo.error("Failed to add subtask");
+      }
+    },
+    [socket]
   );
 
   const getGroupHeader = (type: TaskStatus) => {
@@ -330,18 +301,10 @@ const TaskView: React.FC<TaskViewProps> = props => {
                               return arr;
                             });
                           }}
-                          onClickDeleteButton={() =>
-                            handleDeleteTask(task.id, taskGroupIndex, taskIndex)
-                          }
+                          onClickDeleteButton={() => handleDeleteTask(task.id)}
                           onDragEndSubtask={onDragEndSubtask}
                           onClickDeleteSubtask={(subtaskId, subtaskIndex) =>
-                            handleDeleteSubtask(
-                              subtaskId,
-                              task.id,
-                              taskGroupIndex,
-                              taskIndex,
-                              subtaskIndex
-                            )
+                            handleDeleteSubtask(subtaskId, task.id)
                           }
                           onAddSubtask={handleAddSubtask}
                           onEditTask={handleEditTask}
