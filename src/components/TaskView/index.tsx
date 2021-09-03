@@ -14,6 +14,7 @@ import { move, reorder } from "./helpers";
 import axios from "../../lib/axios";
 import cogo from "cogo-toast";
 import NewTask from "./NewTask";
+import pick from "../../lib/utils/pick";
 
 const TaskView: React.FC<TaskViewProps> = props => {
   const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([
@@ -75,6 +76,11 @@ const TaskView: React.FC<TaskViewProps> = props => {
       const newState: TaskGroup[] = [...taskGroups];
       newState[sInd].tasks = items;
 
+      handleEditTask({
+        id: newState[sInd].tasks[destination.index].id,
+        order: destination.index,
+      });
+
       setTaskGroups(newState);
     } else {
       const result = move<Task>(
@@ -87,14 +93,10 @@ const TaskView: React.FC<TaskViewProps> = props => {
       newState[sInd].tasks = result[sInd];
       newState[dInd].tasks = result[dInd];
 
-      handleEditTask(
-        {
-          id: newState[dInd].tasks[destination.index].id,
-          status: taskGroups[dInd].type,
-        },
-        dInd,
-        destination.index
-      );
+      handleEditTask({
+        id: newState[dInd].tasks[destination.index].id,
+        status: taskGroups[dInd].type,
+      });
 
       setTaskGroups(newState);
     }
@@ -118,6 +120,11 @@ const TaskView: React.FC<TaskViewProps> = props => {
       );
       const newState: TaskGroup[] = [...taskGroups];
       newState[taskGroupIndex].tasks[sInd].subtasks = items;
+      handleEditSubtask({
+        id: newState[taskGroupIndex].tasks[sInd].subtasks[destination.index].id,
+        taskId: newState[taskGroupIndex].tasks[sInd].id,
+        order: destination.index,
+      });
       setTaskGroups(newState);
     } else {
       const result = move<Subtask>(
@@ -174,66 +181,29 @@ const TaskView: React.FC<TaskViewProps> = props => {
     []
   );
 
-  const handleEditTask = useCallback(
-    async (taskUpdateData: any, groupIndex: number, taskIndex: number) => {
-      try {
-        const updateData = {};
+  const handleEditTask = useCallback(async (taskUpdateData: any) => {
+    try {
+      const updateData = pick(taskUpdateData, ["title", "status", "order"]);
+      await axios.put<Task>(`/tasks/${taskUpdateData.id}`, updateData);
+    } catch (e) {
+      console.error(e);
+      cogo.error("Failed to update task");
+    }
+  }, []);
 
-        if (taskUpdateData.title) {
-          Object.assign(updateData, { title: taskUpdateData.title });
-        }
+  const handleEditSubtask = useCallback(async (subtaskUpdateData: any) => {
+    try {
+      const updateData = pick(subtaskUpdateData, ["title", "order"]);
 
-        if (taskUpdateData.status) {
-          Object.assign(updateData, { status: taskUpdateData.status });
-        }
-
-        const res = await axios.put<Task>(
-          `/tasks/${taskUpdateData.id}`,
-          updateData
-        );
-
-        setTaskGroups(prev => {
-          const arr = [...prev];
-          arr[groupIndex].tasks[taskIndex] = res.data;
-
-          return arr;
-        });
-      } catch (e) {
-        console.error(e);
-        cogo.error("Failed to update task");
-      }
-    },
-    []
-  );
-
-  const handleEditSubtask = useCallback(
-    async (
-      subtaskUpdateData: any,
-      groupIndex: number,
-      taskIndex: number,
-      subtaskIndex: number
-    ) => {
-      try {
-        const res = await axios.put<Subtask>(
-          `/tasks/${subtaskUpdateData.taskId}/s/${subtaskUpdateData.id}`,
-          {
-            title: subtaskUpdateData.title,
-          }
-        );
-
-        setTaskGroups(prev => {
-          const arr = [...prev];
-          arr[groupIndex].tasks[taskIndex].subtasks[subtaskIndex] = res.data;
-
-          return arr;
-        });
-      } catch (e) {
-        console.error(e);
-        cogo.error("Failed to update task");
-      }
-    },
-    []
-  );
+      await axios.put<Subtask>(
+        `/tasks/${subtaskUpdateData.taskId}/s/${subtaskUpdateData.id}`,
+        updateData
+      );
+    } catch (e) {
+      console.error(e);
+      cogo.error("Failed to update task");
+    }
+  }, []);
 
   const handleDeleteTask = useCallback(
     async (id: string, groupIndex: number, taskIndex: number) => {
