@@ -34,25 +34,89 @@ const TaskView: React.FC<TaskViewProps> = props => {
 
       const tasks = [...newState[taskGroupIndex].tasks];
 
+      let taskIndexToUpdate;
+
       switch (data.type) {
         case "CREATE_TASK":
           tasks.push(data.task);
           newState[taskGroupIndex].tasks = tasks;
           break;
+
         case "UPDATE_TASK":
-          const taskIndexToUpdate = tasks.findIndex(t => t.id === data.id);
-          const [deletedTask] = tasks.splice(taskIndexToUpdate, 1, data.task);
-          // if order has been changed, sort the tasks
-          if (deletedTask.order !== data.order) {
-            tasks.sort((a, b) => a.order - b.order);
+          taskIndexToUpdate = tasks.findIndex(t => t.id === data.id);
+          const updateTaskData = {
+            ...tasks[taskIndexToUpdate],
+            ...data.task,
+          };
+
+          if (tasks[taskIndexToUpdate].order !== data.order) {
+            const currentOrder = tasks[taskIndexToUpdate].order;
+
+            for (let i = 0; i < tasks.length; i++) {
+              if (tasks[i].id === data.id) continue;
+              if (
+                data.order < currentOrder &&
+                tasks[i].order >= data.order &&
+                tasks[i].order < currentOrder
+              ) {
+                tasks[i].order += 1;
+              } else if (
+                tasks[i].order <= data.order &&
+                tasks[i].order > currentOrder
+              ) {
+                tasks[i].order -= 1;
+              }
+            }
           }
+
+          // } else {
+          //   tasks.splice(taskIndexToUpdate, 1, updateTaskData);
+          // }
+
+          tasks.splice(taskIndexToUpdate, 1, updateTaskData);
+
+          tasks.sort((a, b) => a.order - b.order);
+
           newState[taskGroupIndex].tasks = tasks;
           break;
+
         case "DELETE_TASK":
           const taskIndexToDelete = tasks.findIndex(t => t.id === data.id);
           tasks.splice(taskIndexToDelete, 1);
           newState[taskGroupIndex].tasks = tasks;
           break;
+
+        case "CREATE_SUBTASK":
+          taskIndexToUpdate = tasks.findIndex(t => t.id === data.taskId);
+          tasks[taskIndexToUpdate].subtasks.push(data.subtask);
+          newState[taskGroupIndex].tasks = tasks;
+          break;
+
+        case "UPDATE_SUBTASK":
+          taskIndexToUpdate = tasks.findIndex(t => t.id === data.taskId);
+          const subtaskIndexToUpdate = tasks[
+            taskIndexToUpdate
+          ].subtasks.findIndex(s => s.id === data.id);
+          const [deletedSubtask] = tasks[taskIndexToUpdate].subtasks.splice(
+            subtaskIndexToUpdate,
+            1,
+            data.subtask
+          );
+          if (deletedSubtask.order !== data.order) {
+            tasks[taskIndexToUpdate].subtasks.sort((a, b) => a.order - b.order);
+          }
+          newState[taskGroupIndex].tasks = tasks;
+          break;
+
+        case "DELETE_SUBTASK":
+          taskIndexToUpdate = tasks.findIndex(t => t.id === data.taskId);
+          const subtaskIndexToDelete = tasks[
+            taskIndexToUpdate
+          ].subtasks.findIndex(t => t.id === data.id);
+          tasks[taskIndexToUpdate].subtasks.splice(subtaskIndexToDelete, 1);
+          newState[taskGroupIndex].tasks = tasks;
+          break;
+
         default:
           break;
       }
@@ -90,6 +154,8 @@ const TaskView: React.FC<TaskViewProps> = props => {
 
     const sInd = +source.droppableId;
     const dInd = +destination.droppableId;
+
+    if (sInd === dInd && source.index === destination.index) return;
 
     if (sInd === dInd) {
       const items = reorder<Task>(
