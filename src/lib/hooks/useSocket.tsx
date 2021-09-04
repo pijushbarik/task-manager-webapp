@@ -24,7 +24,7 @@ const useSocket = () => {
 };
 
 const useSocketProvider = () => {
-  const [socket] = useState<Socket | null>(() =>
+  const [socket] = useState<Socket>(() =>
     io(process.env.REACT_APP_API_URL || "")
   );
 

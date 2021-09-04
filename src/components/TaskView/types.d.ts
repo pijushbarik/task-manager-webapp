@@ -20,8 +20,10 @@ export interface TaskViewProps {
   mode?: "list" | "board";
 }
 
-export interface TaskResponse extends Subtask {
-  subtasks: Subtask[];
+export interface TaskResponse {
+  todo: Task[];
+  in_progress: Task[];
+  completed: Task[];
 }
 
 interface TaskUpdateBase {

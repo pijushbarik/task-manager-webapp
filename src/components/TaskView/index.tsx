@@ -25,38 +25,54 @@ const TaskView: React.FC<TaskViewProps> = props => {
 
   const socket = useSocket();
 
+  const handlePartialDataUpdate = useCallback((data: any) => {
+    setTaskGroups(prev => {
+      const newState = [...prev];
+      const taskGroupIndex = newState.findIndex(t => t.type === data.status);
+
+      if (taskGroupIndex < 0) return newState;
+
+      const tasks = [...newState[taskGroupIndex].tasks];
+
+      switch (data.type) {
+        case "CREATE_TASK":
+          tasks.push(data.task);
+          newState[taskGroupIndex].tasks = tasks;
+          break;
+        case "UPDATE_TASK":
+          break;
+        case "DELETE_TASK":
+          const taskIndexToDelete = tasks.findIndex(t => t.id === data.id);
+          tasks.splice(taskIndexToDelete, 1);
+          newState[taskGroupIndex].tasks = tasks;
+          break;
+        default:
+          break;
+      }
+
+      return newState;
+    });
+  }, []);
+
   useEffect(() => {
     if (socket) {
-      socket.on("newData", handleNewData);
+      socket.on("newData", (data: TaskResponse) => {
+        setTaskGroups([
+          { type: "todo", tasks: data.todo },
+          { type: "in_progress", tasks: data.in_progress },
+          { type: "completed", tasks: data.completed },
+        ]);
+      });
+
+      socket.emit("getTasks");
+
+      socket.on("partialDataUpdate", handlePartialDataUpdate);
+
+      return () => {
+        socket.off("partialDataUpdate", handlePartialDataUpdate);
+      };
     }
-
-    return () => {
-      socket.off("newData", handleNewData);
-    };
-  }, [socket]);
-
-  const handleNewData = (data: TaskResponse[]) => {
-    const tasksTodo = [];
-    const tasksInProgress = [];
-    const tasksCompleted = [];
-
-    const tasks: Task[] = data.map(t => ({
-      ...t,
-      showSubtasks: false,
-    }));
-
-    for (let i = 0; i < tasks.length; i++) {
-      if (tasks[i].status === "todo") tasksTodo.push(tasks[i]);
-      if (tasks[i].status === "in_progress") tasksInProgress.push(tasks[i]);
-      if (tasks[i].status === "completed") tasksCompleted.push(tasks[i]);
-    }
-
-    setTaskGroups([
-      { type: "todo", tasks: tasksTodo },
-      { type: "in_progress", tasks: tasksInProgress },
-      { type: "completed", tasks: tasksCompleted },
-    ]);
-  };
+  }, [socket, handlePartialDataUpdate]);
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination } = result;
@@ -81,8 +97,6 @@ const TaskView: React.FC<TaskViewProps> = props => {
         id: newState[sInd].tasks[destination.index].id,
         order: destination.index,
       });
-
-      setTaskGroups(newState);
     } else {
       const result = move<Task>(
         taskGroups[sInd].tasks,
@@ -97,9 +111,8 @@ const TaskView: React.FC<TaskViewProps> = props => {
       handleEditTask({
         id: newState[dInd].tasks[destination.index].id,
         status: taskGroups[dInd].type,
+        order: destination.index,
       });
-
-      setTaskGroups(newState);
     }
   };
 
