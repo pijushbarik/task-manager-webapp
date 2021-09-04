@@ -40,6 +40,13 @@ const TaskView: React.FC<TaskViewProps> = props => {
           newState[taskGroupIndex].tasks = tasks;
           break;
         case "UPDATE_TASK":
+          const taskIndexToUpdate = tasks.findIndex(t => t.id === data.id);
+          const [deletedTask] = tasks.splice(taskIndexToUpdate, 1, data.task);
+          // if order has been changed, sort the tasks
+          if (deletedTask.order !== data.order) {
+            tasks.sort((a, b) => a.order - b.order);
+          }
+          newState[taskGroupIndex].tasks = tasks;
           break;
         case "DELETE_TASK":
           const taskIndexToDelete = tasks.findIndex(t => t.id === data.id);

@@ -3,6 +3,7 @@ export type TaskStatus = "todo" | "in_progress" | "completed";
 export interface Subtask {
   id: string;
   title: string;
+  order: number;
   status: TaskStatus;
 }
 
