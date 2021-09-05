@@ -21,9 +21,10 @@ import {
   updateSubtaskPartial,
 } from "./helpers";
 import cogo from "cogo-toast";
-import NewTask from "./NewTask";
 import pick from "../../lib/utils/pick";
 import useSocket from "../../lib/hooks/useSocket";
+import Container from "../Container";
+import FixedNewTaskButton from "./FixedNewTaskButton";
 
 const TaskView: React.FC<TaskViewProps> = props => {
   const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([
@@ -257,30 +258,24 @@ const TaskView: React.FC<TaskViewProps> = props => {
 
   const getGroupHeader = (type: TaskStatus) => {
     return (
-      <div
-        className={classNames(
-          "p-4 rounded-md rounded-b-none text-white font-semibold capitalize flex justify-between items-center",
-          type === "todo" && "bg-gray-600",
-          type === "in_progress" && "bg-blue-600",
-          type === "completed" && "bg-green-600"
-        )}
-        key={type}
-      >
-        <span>{type.split("_").join(" ")}</span>
-        {type === "todo" ? (
-          <NewTask onAdd={handleAddTask} placeholder="Enter task title" />
-        ) : null}
+      <div className="flex items-center justify-between">
+        <div
+          className={classNames(
+            "px-2 py-1 rounded-md rounded-b-none text-white font-semibold text-sm capitalize",
+            type === "todo" && "bg-gray-600",
+            type === "in_progress" && "bg-blue-600",
+            type === "completed" && "bg-green-600"
+          )}
+          key={type}
+        >
+          <span>{type.split("_").join(" ")}</span>
+        </div>
       </div>
     );
   };
 
   return (
-    <div
-      className={classNames(
-        "flex flex-col h-full",
-        props.mode === "list" && "overflow-y-scroll"
-      )}
-    >
+    <Container className={classNames("flex flex-col")}>
       {props.mode !== "list" && (
         <div className="grid grid-cols-3 gap-6">
           {taskGroups.map(taskGroup => getGroupHeader(taskGroup.type))}
@@ -290,32 +285,19 @@ const TaskView: React.FC<TaskViewProps> = props => {
       <DragDropContext onDragEnd={onDragEnd}>
         <div
           className={classNames(
-            props.mode === "list" ? "" : "grid grid-cols-3 gap-6"
+            props.mode !== "list" && "grid grid-cols-3 gap-6"
           )}
-          style={{
-            height: props.mode === "list" ? "auto" : "calc(100% - 56px)",
-          }}
         >
           {taskGroups.map((taskGroup, taskGroupIndex) => (
             <div
-              className={classNames(
-                "p-2 bg-gray-100 rounded-md rounded-t-none",
-                props.mode === "list"
-                  ? "overflow-y-visible"
-                  : "overflow-y-hidden h-full"
-              )}
+              className={classNames(props.mode === "list" && "mb-4 last:mb-0")}
+              style={{ height: "min-content" }}
               key={taskGroup.type}
             >
               {props.mode === "list" && getGroupHeader(taskGroup.type)}
               <Droppable key={taskGroupIndex} droppableId={`${taskGroupIndex}`}>
                 {provided => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className={classNames(
-                      props.mode === "list" ? "" : "h-full overflow-y-scroll"
-                    )}
-                  >
+                  <div ref={provided.innerRef} {...provided.droppableProps}>
                     {taskGroup.tasks.length ? (
                       taskGroup.tasks.map((task, taskIndex) => (
                         <DraggableTaskCard
@@ -325,6 +307,7 @@ const TaskView: React.FC<TaskViewProps> = props => {
                           groupIndex={taskGroupIndex}
                           subtasks={task.subtasks}
                           showSubtasks={task.showSubtasks}
+                          group={task.status}
                           onClickListButton={() => {
                             setTaskGroups(prev => {
                               const arr = [...prev];
@@ -344,10 +327,11 @@ const TaskView: React.FC<TaskViewProps> = props => {
                           onAddSubtask={handleAddSubtask}
                           onEditTask={handleEditTask}
                           onEditSubtask={handleEditSubtask}
+                          mode={props.mode}
                         />
                       ))
                     ) : (
-                      <p className="text-center text-gray-400">
+                      <p className="text-gray-400 text-sm my-4">
                         No items to show here
                       </p>
                     )}
@@ -359,7 +343,9 @@ const TaskView: React.FC<TaskViewProps> = props => {
           ))}
         </div>
       </DragDropContext>
-    </div>
+
+      <FixedNewTaskButton onAdd={handleAddTask} />
+    </Container>
   );
 };
 

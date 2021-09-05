@@ -1,13 +1,15 @@
 import { Draggable } from "react-beautiful-dnd";
 import classNames from "classnames";
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faGripVertical, faTrash } from "@fortawesome/free-solid-svg-icons";
 import Button from "../Button";
 import { useState, useEffect } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 interface DraggableSubaskCardProps {
   id: string;
   title: string;
   index: number;
+  mode?: "list" | "board";
   onClickDeleteButton: (subtaskId: string, subtaskIndex: number) => void;
   onEditSubtask: (
     subtaskUpdateData: { id: string; title: string },
@@ -45,46 +47,53 @@ const DraggableSubtaskCard: React.FC<DraggableSubaskCardProps> = props => {
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
-          {...provided.dragHandleProps}
           className={classNames(
-            "bg-white px-2 py-1 flex items-center justify-between border-2 border-solid mb-0.5 last:mb-0 hover:bg-gray-50 transition",
+            "bg-white px-2 py-1 flex items-center justify-between border-2 border-solid shadow-md mb-0.5 last:mb-0 rounded-md",
             snapshot.isDragging ? "border-yellow-500" : "border-white"
           )}
         >
-          {isEditing ? (
-            <input
-              value={value}
-              onChange={e => setValue(e.target.value)}
-              onBlur={() => {
-                setIsEditing(false);
-                handleCompleteEdit();
-              }}
-              onKeyDown={e => {
-                if (e.key === "Enter") {
-                  setIsEditing(false);
-                  handleCompleteEdit();
-                }
-              }}
-              autoFocus
-              className="px-2 py-1 outline-none border border-green-800 rounded-sm shadow-md text-sm"
-            />
-          ) : (
-            <span
-              onClick={() => {
-                setIsEditing(true);
-              }}
-              className="py-1 cursor-pointer text-sm"
-            >
-              {props.title}
-            </span>
-          )}
-          <div>
-            <Button
-              icon={faTrash}
-              title="Delete subtask"
-              size="small"
-              onClick={() => props.onClickDeleteButton(props.id, props.index)}
-            />
+          <div className="grid gap-4 grid-cols-2 w-full">
+            <div className="flex items-center space-x-4">
+              <div {...provided.dragHandleProps}>
+                <FontAwesomeIcon icon={faGripVertical} />
+              </div>
+
+              {isEditing ? (
+                <input
+                  value={value}
+                  onChange={e => setValue(e.target.value)}
+                  onBlur={() => {
+                    setIsEditing(false);
+                    handleCompleteEdit();
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      setIsEditing(false);
+                      handleCompleteEdit();
+                    }
+                  }}
+                  autoFocus
+                  className="px-2 py-1 outline-none border border-green-800 rounded-sm shadow-md text-sm"
+                />
+              ) : (
+                <span
+                  onClick={() => {
+                    setIsEditing(true);
+                  }}
+                  className="py-1 cursor-pointer text-sm"
+                >
+                  {props.title}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Button
+                icon={faTrash}
+                title="Delete subtask"
+                size="small"
+                onClick={() => props.onClickDeleteButton(props.id, props.index)}
+              />
+            </div>
           </div>
         </div>
       )}

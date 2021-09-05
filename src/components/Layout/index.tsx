@@ -11,7 +11,10 @@ const Layout: React.FC<LayoutProps> = props => {
       <header>
         <Navbar />
       </header>
-      <main style={{ height: "calc(100vh - 72px - 32px)" }}>
+      <main
+        style={{ minHeight: "calc(100vh - 72px - 32px)" }}
+        className="bg-gray-100"
+      >
         <Container fluid className="h-full">
           {props.children}
         </Container>
