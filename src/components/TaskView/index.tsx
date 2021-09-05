@@ -10,7 +10,16 @@ import {
   TaskResponse,
   TaskStatus,
 } from "./types";
-import { move, reorder } from "./helpers";
+import {
+  move,
+  reorder,
+  createTaskPartial,
+  deleteTaskPartial,
+  createSubtaskPartial,
+  deleteSubtaskPartial,
+  updateTaskPartial,
+  updateSubtaskPartial,
+} from "./helpers";
 import cogo from "cogo-toast";
 import NewTask from "./NewTask";
 import pick from "../../lib/utils/pick";
@@ -27,94 +36,34 @@ const TaskView: React.FC<TaskViewProps> = props => {
 
   const handlePartialDataUpdate = useCallback((data: any) => {
     setTaskGroups(prev => {
-      const newState = [...prev];
+      let newState = [...prev];
       const taskGroupIndex = newState.findIndex(t => t.type === data.status);
 
       if (taskGroupIndex < 0) return newState;
 
-      const tasks = [...newState[taskGroupIndex].tasks];
-
-      let taskIndexToUpdate;
-
       switch (data.type) {
         case "CREATE_TASK":
-          tasks.push(data.task);
-          newState[taskGroupIndex].tasks = tasks;
+          newState = createTaskPartial(newState, data);
           break;
 
         case "UPDATE_TASK":
-          taskIndexToUpdate = tasks.findIndex(t => t.id === data.id);
-          const updateTaskData = {
-            ...tasks[taskIndexToUpdate],
-            ...data.task,
-          };
-
-          if (tasks[taskIndexToUpdate].order !== data.order) {
-            const currentOrder = tasks[taskIndexToUpdate].order;
-
-            for (let i = 0; i < tasks.length; i++) {
-              if (tasks[i].id === data.id) continue;
-              if (
-                data.order < currentOrder &&
-                tasks[i].order >= data.order &&
-                tasks[i].order < currentOrder
-              ) {
-                tasks[i].order += 1;
-              } else if (
-                tasks[i].order <= data.order &&
-                tasks[i].order > currentOrder
-              ) {
-                tasks[i].order -= 1;
-              }
-            }
-          }
-
-          // } else {
-          //   tasks.splice(taskIndexToUpdate, 1, updateTaskData);
-          // }
-
-          tasks.splice(taskIndexToUpdate, 1, updateTaskData);
-
-          tasks.sort((a, b) => a.order - b.order);
-
-          newState[taskGroupIndex].tasks = tasks;
+          newState = updateTaskPartial(newState, data);
           break;
 
         case "DELETE_TASK":
-          const taskIndexToDelete = tasks.findIndex(t => t.id === data.id);
-          tasks.splice(taskIndexToDelete, 1);
-          newState[taskGroupIndex].tasks = tasks;
+          newState = deleteTaskPartial(newState, data);
           break;
 
         case "CREATE_SUBTASK":
-          taskIndexToUpdate = tasks.findIndex(t => t.id === data.taskId);
-          tasks[taskIndexToUpdate].subtasks.push(data.subtask);
-          newState[taskGroupIndex].tasks = tasks;
+          newState = createSubtaskPartial(newState, data);
           break;
 
         case "UPDATE_SUBTASK":
-          taskIndexToUpdate = tasks.findIndex(t => t.id === data.taskId);
-          const subtaskIndexToUpdate = tasks[
-            taskIndexToUpdate
-          ].subtasks.findIndex(s => s.id === data.id);
-          const [deletedSubtask] = tasks[taskIndexToUpdate].subtasks.splice(
-            subtaskIndexToUpdate,
-            1,
-            data.subtask
-          );
-          if (deletedSubtask.order !== data.order) {
-            tasks[taskIndexToUpdate].subtasks.sort((a, b) => a.order - b.order);
-          }
-          newState[taskGroupIndex].tasks = tasks;
+          newState = updateSubtaskPartial(newState, data);
           break;
 
         case "DELETE_SUBTASK":
-          taskIndexToUpdate = tasks.findIndex(t => t.id === data.taskId);
-          const subtaskIndexToDelete = tasks[
-            taskIndexToUpdate
-          ].subtasks.findIndex(t => t.id === data.id);
-          tasks[taskIndexToUpdate].subtasks.splice(subtaskIndexToDelete, 1);
-          newState[taskGroupIndex].tasks = tasks;
+          newState = deleteSubtaskPartial(newState, data);
           break;
 
         default:
